@@ -47,8 +47,6 @@ This sample module contains one small method that filters contigs.
         self.shared_folder = config['scratch']
         logging.basicConfig(format='%(created)s %(levelname)s: %(message)s',
                             level=logging.INFO)
-        self.callback_url = os.environ['SDK_CALLBACK_URL']
-        self.shared_folder = config['scratch']
         #END_CONSTRUCTOR
         pass
 
@@ -66,34 +64,25 @@ This sample module contains one small method that filters contigs.
        
         # Print statements to stdout/stderr are captured and available as the App log
         logging.info('Starting run_ouango_ContigFilter function. Params=' + pformat(params))
-
-        print(params['min_length'], params['max_length'], params['assembly_ref'])
-        output = {}
-
+        
         # Step 1 - Parse/examine the parameters and catch any errors
         # It is important to check that parameters exist and are defined, and that nice error
         # messages are returned to users.  Parameter values go through basic validation when
         # defined in a Narrative App, but advanced users or other SDK developers can call
         # this function directly, so validation is still important.
         logging.info('Validating parameters.')
-        
-        if 'workspace_name' not in params:
-            raise ValueError('Parameter workspace_name is not set in input arguments')
-        workspace_name = params['workspace_name']
-        if 'assembly_input_ref' not in params:
-            raise ValueError('Parameter assembly_input_ref is not set in input arguments')
-        assembly_input_ref = params['assembly_input_ref']
-        if 'min_length' not in params:
-            raise ValueError('Parameter min_length is not set in input arguments')
-        min_length_orig = params['min_length']
-        min_length = None
-        try:
-            min_length = int(min_length_orig)
-        except ValueError:
-            raise ValueError('Cannot parse integer from min_length parameter (' + str(min_length_orig) + ')')
-        if min_length < 0:
-            raise ValueError('min_length parameter cannot be negative (' + str(min_length) + ')')
-         
+ 
+        for name in ['min_length', 'max_length', 'assembly_input_ref', 'workspace_name']:
+            if name not in params:
+                raise ValueError('Parameter "' + name + '" is required but missing')
+        if not isinstance(params['assembly_input_ref'], str) or not len(params['assembly_input_ref']):
+            raise ValueError('Pass in a valid assembly reference string')
+        if not isinstance(params['min_length'], int) or (params['min_length'] < 0):
+            raise ValueError('Min length must be a non-negative integer') 
+        if not isinstance(params['max_length'], int) or (params['max_length'] < 0):
+            raise ValueError('Max length must be a non-negative integer') 
+        print(params['min_length'], params['max_length'], params['assembly_input_ref'])
+        output = {}       
     
 
         # Step 2 - Download the input data as a Fasta and
@@ -101,20 +90,32 @@ This sample module contains one small method that filters contigs.
         # The return object gives us the path to the file that was created.
         logging.info('Downloading Assembly data as a Fasta file.')
         assemblyUtil = AssemblyUtil(self.callback_url)
-        fasta_file = assemblyUtil.get_assembly_as_fasta({'ref': params['assembly_ref']})
+        fasta_file = assemblyUtil.get_assembly_as_fasta({'ref': params['assembly_input_ref']})
         print(fasta_file)
 
         # Step 3 - Actually perform the filter operation, saving the good contigs to a new fasta file.
         # We can use BioPython to parse the Fasta file and build and save the output to a file.
+
+        parsed_assembly = SeqIO.parse(fasta_file['path'], 'fasta')
+        min_length = params['min_length']
+        max_length = params['max_length']
+
+        # Keep a list of contigs greater than min_length
         good_contigs = []
+        # total contigs regardless of length
         n_total = 0
+        # total contigs over the min_length
         n_remaining = 0
-        for record in SeqIO.parse(fasta_file['path'], 'fasta'):
+        for record in parsed_assembly:
             n_total += 1
-            if len(record.seq) >= min_length:
+            if len(record.seq) >= min_length and len(record.seq) <= max_length:
                 good_contigs.append(record)
                 n_remaining += 1
-        
+        output = {
+            'n_total': n_total,
+            'n_remaining': n_remaining
+        }
+
         logging.info('Filtered Assembly to ' + str(n_remaining) + ' contigs out of ' + str(n_total))
         filtered_fasta_file = os.path.join(self.shared_folder, 'filtered.fasta')
         SeqIO.write(good_contigs, filtered_fasta_file, 'fasta')
@@ -131,7 +132,7 @@ This sample module contains one small method that filters contigs.
         output = {
             'n_total': n_total,
             'n_remaining': n_remaining,
-            'filtered_assembly_ref': new_ref
+            'filtered_assembly_input_ref': new_ref
         }
 
         text_message = "".join([
@@ -159,7 +160,7 @@ This sample module contains one small method that filters contigs.
             'report_name': report['name'],
             'n_total': n_total,
             'n_remaining': n_remaining,
-            'filtered_assembly_ref': new_ref
+            'filtered_assembly_input_ref': new_ref
         }
         # Step 4 - Save the new Assembly back to the system
         logging.info('Uploading filtered Assembly data.')
