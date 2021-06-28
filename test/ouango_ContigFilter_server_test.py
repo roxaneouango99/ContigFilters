@@ -75,7 +75,6 @@ class ouango_ContigFilterTest(unittest.TestCase):
             print('Test workspace was deleted')
 
     # NOTE: According to Python unittest naming rules test method names should start from 'test'. # noqa
-    # NOTE: According to Python unittest naming rules test method names should start from 'test'. # noqa
     
     def test_run_ouango_ContigFilter_max(self):
             ref = "79/16/1"
@@ -85,7 +84,7 @@ class ouango_ContigFilterTest(unittest.TestCase):
                 'min_length': 100,
                 'max_length': 1000000
             })
-            print(result)
+            
            
     def my_test_run_ouango_ContigFilter_ok(self): 
         # call your implementation
@@ -158,9 +157,10 @@ class ouango_ContigFilterTest(unittest.TestCase):
         self.assertEqual(result[0]['n_initial_contigs'], 2)
         self.assertEqual(result[0]['n_contigs_removed'], 1)
         self.assertEqual(result[0]['n_contigs_remaining'], 1)
-        #self.assertEqual(result[0], ['n_total'], 2)
-        #self.assertEqual(result[0]['n_remaining'], 1)
-                                       
+        self.assertTrue(len(result[0]['report_name']))
+        self.assertTrue(len(result[0]['report_ref']))
+    
+        
     def test_run_ouango_ContigFilter_test_max(self):
         ref = "79/16/1"
         params = {
@@ -173,9 +173,6 @@ class ouango_ContigFilterTest(unittest.TestCase):
         self.assertEqual(result[0]['n_initial_contigs'], 2)
         self.assertEqual(result[0]['n_contigs_removed'], 1)
         self.assertEqual(result[0]['n_contigs_remaining'], 1)
-        #self.assertEqual(result[0]['n_total'], 2)
-        # self.assertEqual(result[0]['n_remaining'], 1)
-        # self.assertTrue(len(result[0]['filtered_assembly_input_ref']))
         self.assertTrue(len(result[0]['report_name']))
         self.assertTrue(len(result[0]['report_ref']))
     
